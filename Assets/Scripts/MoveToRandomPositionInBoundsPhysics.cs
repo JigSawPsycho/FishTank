@@ -28,7 +28,7 @@ public class MoveToRandomPositionInBounds : PhysicsMover, IDrawGizmos
     private void ResetRigidbodyWithNewTargetPosition()
     {
         ResetVelocities();
-        _targetPosition = BoundsUtility.GetRandomPointInBounds(_moveableBounds);
+        _targetPosition = BoundsUtility.GetRandomPointInBounds(_moveableBounds, 0.05f);
         _rigidbody.transform.LookAt(_targetPosition);
     }
 

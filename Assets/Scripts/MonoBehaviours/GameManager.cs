@@ -26,7 +26,7 @@ public class GameManager : MonoBehaviour
     {
         for(int i = 0; i < count; i++)
         {
-            _fishFactory.Create(BoundsUtility.GetRandomPointInBounds(_fishSpawnBounds.bounds), Quaternion.identity);
+            _fishFactory.Create(BoundsUtility.GetRandomPointInBounds(_fishSpawnBounds.bounds, 0.05f), Quaternion.identity);
         }
     }
 

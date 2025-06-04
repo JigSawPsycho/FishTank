@@ -187,6 +187,13 @@ MonoBehaviour:
     _material: {fileID: 2100000, guid: a1a86cf11449ed79ab91061131c3d667, type: 2}
     _color: {r: 0.70980394, g: 0.48031598, b: 0, a: 1}
     _moveSpeed: 0.2
+  - _name: Type 4
+    _headMesh: {fileID: 1153582019727644268, guid: e069c48d6119eb1689a86ab54609a2c1, type: 3}
+    _midMesh: {fileID: 7249557540306807404, guid: e069c48d6119eb1689a86ab54609a2c1, type: 3}
+    _tailMesh: {fileID: -3143392052361470153, guid: e069c48d6119eb1689a86ab54609a2c1, type: 3}
+    _material: {fileID: 2100000, guid: a1a86cf11449ed79ab91061131c3d667, type: 2}
+    _color: {r: 0, g: 0.4754328, b: 0.70980394, a: 1}
+    _moveSpeed: 0.2
   _fishCount: 1
   _desiredFishCount: 1
   _maxFishCount: 250
