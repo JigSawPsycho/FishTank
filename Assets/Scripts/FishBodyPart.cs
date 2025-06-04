@@ -7,6 +7,6 @@ public class FishBodyPart
     [SerializeField] private MeshRenderer _meshRenderer;
     public MeshRenderer MeshRenderer => _meshRenderer;
 
-    [SerializeField] private MeshCollider _meshCollider;
-    public MeshCollider MeshCollider => _meshCollider;
+    [SerializeField] private MeshFilter _meshFilter;
+    public MeshFilter MeshFilter => _meshFilter;
 }

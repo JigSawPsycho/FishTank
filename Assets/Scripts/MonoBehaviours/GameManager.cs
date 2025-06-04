@@ -35,6 +35,11 @@ public class GameManager : MonoBehaviour
         _unityLifecycleEventRunner.FixedUpdate();
     }
 
+    public void Update()
+    {
+        _unityLifecycleEventRunner.Update();
+    }
+
     public void OnDrawGizmos()
     {
         if(Application.isPlaying) _unityLifecycleEventRunner.OnDrawGizmos();
@@ -74,10 +79,14 @@ public class GameManager : MonoBehaviour
 
             if(GUI.Button(new Rect(25, yPos, 100, 25), _fishSettings[i].Name))
             {
+                FishSettings settings = _fishSettings[i];
                 _fishSettings[i].Material.color = _fishSettings[i].Color;
                 foreach(var fish in _fishFactory.ActiveFish)
                 {
-                    fish.SetSettings(_fishSettings[i]);
+                    fish.SetMoveSpeed(settings.MoveSpeed)
+                        .SetHead(settings.HeadMesh, settings.Material)
+                        .SetMiddle(settings.MidMesh, settings.Material)
+                        .SetTail(settings.TailMesh, settings.Material);
                 }
             }
         }

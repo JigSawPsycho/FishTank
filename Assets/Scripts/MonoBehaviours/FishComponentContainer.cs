@@ -1,10 +1,15 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 public class FishComponentContainer : MonoBehaviour
 {
     [SerializeField] private Rigidbody _rigidbody;
     public Rigidbody RigidBody => _rigidbody;
+
+    [SerializeField] private PointerEventSubject _pointerEventSubject;
+    public PointerEventSubject PointerEventSubject => _pointerEventSubject;
+
+    [SerializeField] private ColliderTriggerEventSubject _colliderTriggerEventSubject;
+    public ColliderTriggerEventSubject ColliderTriggerEventSubject => _colliderTriggerEventSubject;
 
     [SerializeField] private FishBodyPart _fishHead;
     public FishBodyPart FishHead => _fishHead;

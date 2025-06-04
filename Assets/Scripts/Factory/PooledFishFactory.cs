@@ -26,7 +26,7 @@ public class PooledFishFactory
     {
         if(_fishQueue.Count == 0)
         {
-            Fish newFish = new Fish(_unityLifecycleEventRunner, GameObject.Instantiate(_fishPrefab, position, rotation), _fishMoveableBounds);
+            Fish newFish = CreateNewFish(position, rotation);
             _fishQueue.Enqueue(newFish);
         }
 
@@ -36,13 +36,29 @@ public class PooledFishFactory
         return pooledFishComponentContainer;
     }
 
+    private Fish CreateNewFish(Vector3 position, Quaternion rotation)
+    {
+        FishComponentContainer fishComponentContainer = GameObject.Instantiate(_fishPrefab, position, rotation);
+        MoveToRandomPositionInBounds randomMovementMover = new MoveToRandomPositionInBounds(fishComponentContainer.RigidBody, _fishMoveableBounds, _unityLifecycleEventRunner);
+        SetPositionToMousePhysics mouseFollowMover = new SetPositionToMousePhysics(fishComponentContainer.RigidBody);
+        FallingPhysics fallingMover = new FallingPhysics(fishComponentContainer.RigidBody);
+
+        Fish newFish = new Fish(_unityLifecycleEventRunner, fishComponentContainer, fallingMover, mouseFollowMover, randomMovementMover);
+
+        return newFish;
+    }
+
     public void Remove(int count)
     {
+        List<Fish> fishToRemove = new List<Fish>();
+
         for(int i = 0; i < count && i < _activeFish.Count; i++)
         {
             _fishQueue.Enqueue(_activeFish[i]);
             _activeFish[i].ToggleActive(false);
-            _activeFish.RemoveAt(i);
+            fishToRemove.Add(_activeFish[i]);
         }
+
+        _activeFish.RemoveAll(x => fishToRemove.Contains(x));
     }
 }

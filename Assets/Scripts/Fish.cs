@@ -1,23 +1,47 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
-public class Fish : IFixedUpdate, IDrawGizmos
+public class Fish : IFixedUpdate, IUpdate
 {
     private const float TARGET_DISTANCE_THRESHOLD = 0.1f;
     private FishComponentContainer _componentContainer;
     private UnityLifecycleEventRunner _unityEventsRunner;
-    private Bounds _moveableBounds;
     private Color _color = Color.white;
     
     private float _moveSpeed = 0.5f;
-    private Vector3 _targetPosition = Vector3.zero;
+    private PointerEventSubject _pointerEventSubject;
+    private bool _grabbed;
+    private PhysicsMover _grabbedPhysicsHandler;
+    private PhysicsMover _releasedPhysicsMover;
+    private PhysicsMover _fishTankPhysicsMover;
 
-    public Fish(UnityLifecycleEventRunner unityEventsRunner, FishComponentContainer componentContainer, Bounds moveableBounds)
+    private int _partToCut = 0;
+    private int _bodyPartsCount = 0;
+
+    private bool _dead = false;
+
+    private PhysicsMover GetActivePhysicsMover()
+    {
+        if(_grabbedPhysicsHandler.State == EPhysicsMoverState.Active) return _grabbedPhysicsHandler;
+        if(_releasedPhysicsMover.State == EPhysicsMoverState.Active) return _releasedPhysicsMover;
+        if(_fishTankPhysicsMover.State == EPhysicsMoverState.Active) return _fishTankPhysicsMover;
+        return null;
+    }
+
+    public Fish(UnityLifecycleEventRunner unityEventsRunner, FishComponentContainer componentContainer, PhysicsMover releasedPhysicsMover, PhysicsMover grabbedPhysicsMover, PhysicsMover fishTankPhysicsMover)
     {
         _componentContainer = componentContainer;
         _unityEventsRunner = unityEventsRunner;
-        _moveableBounds = moveableBounds;
+        _releasedPhysicsMover = releasedPhysicsMover;
+        _grabbedPhysicsHandler = grabbedPhysicsMover;
+        _fishTankPhysicsMover = fishTankPhysicsMover;
         _componentContainer.RigidBody.maxLinearVelocity = _moveSpeed;
         _componentContainer.RigidBody.maxAngularVelocity = _moveSpeed;
+        SetClickHandler(_componentContainer.PointerEventSubject);
+        _releasedPhysicsMover.EnterState(EPhysicsMoverState.Inactive);
+        _grabbedPhysicsHandler.EnterState(EPhysicsMoverState.Inactive);
+        _fishTankPhysicsMover.EnterState(EPhysicsMoverState.Active);
+        _bodyPartsCount = _componentContainer.RigidBody.transform.childCount;
     }
 
     public void ToggleActive(bool state)
@@ -25,52 +49,125 @@ public class Fish : IFixedUpdate, IDrawGizmos
         if(state)
         {
             _unityEventsRunner.RegisterFixedUpdate(this);
-            _unityEventsRunner.RegisterDrawGizmos(this);
-            ResetRigidbodyWithNewTargetPosition();
+            _unityEventsRunner.RegisterUpdate(this);
+            _componentContainer.ColliderTriggerEventSubject.RegisterOnTriggerEnterListener(ColliderTriggerEventSubject_OnTriggerEnter);
+            _releasedPhysicsMover.EnterState(EPhysicsMoverState.Inactive);
+            _grabbedPhysicsHandler.EnterState(EPhysicsMoverState.Inactive);
+            _fishTankPhysicsMover.EnterState(EPhysicsMoverState.Active);
+            for(int i = 0; i < _bodyPartsCount; i++)
+            {
+                _componentContainer.RigidBody.transform.GetChild(i).gameObject.SetActive(true);
+            }
+            _dead = false;
             _componentContainer.gameObject.SetActive(true);
         }
         else
         {
+            _componentContainer.ColliderTriggerEventSubject.DeregisterOnTriggerEnterListener(ColliderTriggerEventSubject_OnTriggerEnter);
+            _unityEventsRunner.DeregisterFixedUpdate(this);
+            _unityEventsRunner.DeregisterUpdate(this);
             _componentContainer.gameObject.SetActive(false);
         }
     }
 
-    public Fish SetSettings(FishSettings settings)
+    public Fish SetMoveSpeed(float moveSpeed)
     {
-        _moveSpeed = settings.MoveSpeed;
-        _componentContainer.FishHead.MeshCollider.sharedMesh = settings.HeadMesh;
-        _componentContainer.FishMid.MeshCollider.sharedMesh = settings.MidMesh;
-        _componentContainer.FishTail.MeshCollider.sharedMesh = settings.TailMesh;
-        _componentContainer.FishHead.MeshRenderer.material = settings.Material;
-        _componentContainer.FishMid.MeshRenderer.material = settings.Material;
-        _componentContainer.FishTail.MeshRenderer.material = settings.Material;
+        _moveSpeed = moveSpeed;
         return this;
+    }
+
+    public Fish SetHead(Mesh headMesh, Material headMaterial)
+    {
+        _componentContainer.FishHead.MeshFilter.sharedMesh = headMesh;
+        _componentContainer.FishHead.MeshRenderer.material = headMaterial;
+        return this;
+    }
+
+    public Fish SetMiddle(Mesh middleMesh, Material middleMaterial)
+    {
+        _componentContainer.FishMid.MeshFilter.sharedMesh = middleMesh;
+        _componentContainer.FishMid.MeshRenderer.material = middleMaterial;
+        return this;
+    }
+
+    public Fish SetTail(Mesh tailMesh, Material tailMaterial)
+    {
+        _componentContainer.FishTail.MeshFilter.sharedMesh = tailMesh;
+        _componentContainer.FishTail.MeshRenderer.material = tailMaterial;
+        return this;
+    }
+
+    public Fish SetClickHandler(PointerEventSubject pointerEventSubject)
+    {
+        if(_pointerEventSubject != null)
+        {
+            _pointerEventSubject.DeregisterOnPointerDownListener(PointerEventSubject_OnPointerDown);
+            _pointerEventSubject.DeregisterOnPointerUpListener(PointerEventSubject_OnPointerUp);
+        }
+        _pointerEventSubject = pointerEventSubject;
+        _pointerEventSubject.RegisterOnPointerDownListener(PointerEventSubject_OnPointerDown);
+        _pointerEventSubject.RegisterOnPointerUpListener(PointerEventSubject_OnPointerUp);
+        return this;
+    }
+
+    public Fish SetGrabbedPhysicsHandler(PhysicsMover grabbedPhysicsHandler)
+    {
+        _grabbedPhysicsHandler = grabbedPhysicsHandler;
+        return this;
+    }
+
+    public Fish SetReleasedPhysicsHandler(PhysicsMover releasedPhysicsMover)
+    {
+        _releasedPhysicsMover = releasedPhysicsMover;
+        return this;
+    }
+
+    public Fish SetFishtankPhysicsHandler(PhysicsMover fishtankPhysicsMover)
+    {
+        _fishTankPhysicsMover = fishtankPhysicsMover;
+        return this;
+    }
+
+    private void PointerEventSubject_OnPointerDown(PointerEventData eventData)
+    {
+        _grabbed = true;
+        _fishTankPhysicsMover.EnterState(EPhysicsMoverState.Inactive);
+        _releasedPhysicsMover.EnterState(EPhysicsMoverState.Inactive);
+        _grabbedPhysicsHandler.EnterState(EPhysicsMoverState.Active);
+    }
+
+    private void PointerEventSubject_OnPointerUp(PointerEventData eventData)
+    {
+        _grabbed = false;
+        _fishTankPhysicsMover.EnterState(EPhysicsMoverState.Inactive);
+        _grabbedPhysicsHandler.EnterState(EPhysicsMoverState.Inactive);
+        _releasedPhysicsMover.EnterState(EPhysicsMoverState.Active);
+    }
+
+    private void ColliderTriggerEventSubject_OnTriggerEnter(Collider other)
+    {
+        // When we have other triggers, check the Collider
+        if(!_dead)
+        {
+            _grabbedPhysicsHandler.EnterState(EPhysicsMoverState.Inactive);
+            _releasedPhysicsMover.EnterState(EPhysicsMoverState.Inactive);
+            _fishTankPhysicsMover.EnterState(EPhysicsMoverState.Active);
+        }
+    }
+
+    public void Update()
+    {
+        PhysicsMover state = GetActivePhysicsMover();
+        if(state == _grabbedPhysicsHandler && Input.GetKeyDown(KeyCode.Space) && _partToCut < 3)
+        {
+            _componentContainer.RigidBody.transform.GetChild(_partToCut).gameObject.SetActive(false);
+            _partToCut++;
+            _dead = true;
+        }
     }
 
     public void FixedUpdate()
     {
-        if(Vector3.Distance(_componentContainer.RigidBody.position, _targetPosition) < TARGET_DISTANCE_THRESHOLD || Physics.Raycast(_componentContainer.RigidBody.position, _componentContainer.RigidBody.transform.forward, 0.2f, _componentContainer.RigidBody.gameObject.layer))
-        {
-            ResetRigidbodyWithNewTargetPosition();
-        }
-
-        Vector3 moveDir = (_targetPosition - _componentContainer.RigidBody.position).normalized * _moveSpeed * Time.fixedDeltaTime;
-
-        _componentContainer.RigidBody.AddForce(moveDir, ForceMode.VelocityChange);
-    }
-
-    private void ResetRigidbodyWithNewTargetPosition()
-    {
-        _componentContainer.RigidBody.linearVelocity = Vector3.zero;
-        _targetPosition = BoundsUtility.GetRandomPointInBounds(_moveableBounds);
-        _componentContainer.RigidBody.transform.LookAt(_targetPosition);
-    }
-
-    public void OnDrawGizmos()
-    {
-        Gizmos.color = Color.red;
-        Gizmos.DrawSphere(_targetPosition, 0.01f);
-
-        Gizmos.DrawRay(_componentContainer.RigidBody.position, _targetPosition - _componentContainer.RigidBody.position);
+        GetActivePhysicsMover().MoveRigidbody();
     }
 }
